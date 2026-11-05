@@ -13,8 +13,21 @@
     .type   bf16_from_f32_asm, @function
     .align  2
 bf16_from_f32_asm:
-    li      a0, 0
-    ret
+    srli    t0, a0, 23  
+    andi    t0, t0, 0xFF
+    addi    t1, x0, 0xFF
+    bne     t0, t1, bf16_from_f32_asm_not_speical
+    srli    a0, a0, 16
+    jalr    x0, ra, 0
+bf16_from_f32_asm_not_speical:
+    srli    t0, a0, 16      # f32bits >> 16
+    andi    t0, t0, 1       # a0: (f32bits >> 16) & 1
+    lui     a1, 0x00008     
+    addi    a1, a1, -1      # a1: 0x00008000 + 0xFFF
+    add     a0, a0, t0
+    add     a0, a0, a1      
+    srli    a0, a0, 16
+    jalr    x0, ra, 0
     .size   bf16_from_f32_asm, .-bf16_from_f32_asm
 
     .globl  bf16_mul_asm
