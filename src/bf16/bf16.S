@@ -13,10 +13,9 @@
     .type   bf16_from_f32_asm, @function
     .align  2
 bf16_from_f32_asm:
-    srli    t0, a0, 23  
-    andi    t0, t0, 0xFF
-    addi    t1, x0, 0xFF
-    bne     t0, t1, bf16_from_f32_asm_not_speical
+    lui     t0, 0x7f800
+    and     t1, a0, t0
+    bne     t1, t0, bf16_from_f32_asm_not_speical
     srli    a0, a0, 16
     jalr    x0, ra, 0
 bf16_from_f32_asm_not_speical:
