@@ -68,21 +68,22 @@ q_mul_pos_b:
     addi    t4, x0, 0           # t4: prod_hi
     addi    t5, x0, 0           # t5: prod_lo
     beq     a1, x0, q_mul_end_loop
-q_mul_loop: 
+    beq     x0, x0, q_mul_check_add
+q_mul_no_add: 
+    slli    a2, t2, 1           # a2: ua_hi << 1
+    srli    a3, t3, 31          # a3: ua_lo >> 31
+    or      t2, a2, a3          # ua_hi = (ua_hi << 1) | (ua_lo >> 31);
+    slli    t3, t3, 1           # ua_lo <<= 1
+    srli    a1, a1, 1           # ub >>= 1
+q_mul_check_add:    
     andi    t6, a1, 1           # t6: ub & 1
     beq     t6, x0, q_mul_no_add
     add     t5, t5, t3          # prod_lo += ua_lo
     sltu    t6, t5, t3          # ua_lo > prod_lo
     add     t6, t6, t2          # ua_hi + (ua_lo > prod_lo)
     add     t4, t4, t6          # prod_hi += ua_hi + (ua_lo > prod_lo)
-q_mul_no_add: 
-    slli    a2, t2, 1           # a2: ua_hi << 1
-    srli    a3, t3, 31          # a3: ua_lo >> 31
-    or      t2, a2, a3          # ua_hi = (ua_hi << 1) | (ua_lo >> 31);
-    slli    t3, t3, 1           # ua_lo <<= 1
-    # free (t6, a2, a3 )
-    srli    a1, a1, 1           # ub >>= 1
-    bne     a1, x0, q_mul_loop
+    srli    t6, a1, 1           # t6 = ub >> 1
+    bne     t6, x0, q_mul_no_add
 q_mul_end_loop:
     slt     t0, t0, x0
     slt     t1, t1, x0
