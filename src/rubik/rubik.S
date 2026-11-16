@@ -310,10 +310,16 @@ solve_stack_loop:
     # remaining == 5: look the node up in in_step_5
     addi    t1, x0, 5
     bne     t0, t1, solve_not_remaining_5
+    # inline get_heuristic
     lhu     a0, 0(a7)
+    add     t1, s0, a0
+    lbu     t1, 0(t1)           # t1: p_h
+    bltu    t0, t1, solve_pop_5 # p_h > 5: not within 5 moves
     lhu     a1, 2(a7)
-    jal     ra, get_heuristic   # a0: h
-    bltu    t0, a0, solve_pop_5 # h > 5: not within 5 moves
+    add     t2, s9, a1
+    lbu     t2, 0(t2)           # t2: o_h
+    bltu    t0, t2, solve_pop_5 # o_h > 5: not within 5 moves
+
     lhu     a0, 0(a7)
     slli    a0, a0, 10
     lhu     t1, 2(a7)
@@ -330,10 +336,17 @@ solve_pop_5:
     beq     x0, x0, solve_stack_loop
 
 solve_not_remaining_5:
+    # inline get_heuristic
+    # t0: remainning
     lhu     a0, 0(a7)
+    add     t1, s0, a0
+    lbu     t1, 0(t1)           # t1: p_h
+    bltu    t0, t1, solve_pop   # p_h > remaining
     lhu     a1, 2(a7)
-    jal     ra, get_heuristic   # a0: h
-    bgeu    t0, a0, solve_try_move      # h <= remaining
+    add     t2, s9, a1
+    lbu     t2, 0(t2)           # t2: o_h
+    bgeu    t0, t2, solve_try_move      # max(p_h, o_h) <= remaining
+solve_pop:
     addi    a6, a6, -1          # depth--
     beq     x0, x0, solve_stack_loop
 
@@ -353,13 +366,32 @@ solve_check_move_index_over_9:
     beq     x0, x0, solve_check_move_index_over_9
 
 solve_not_same_face:
-    addi    a2, t0, 0           # a2: next_move
+   # inline apply_move
     addi    t2, t0, 1
     sb      t2, 6(a7)           # move_index++
-    addi    t0, t1, 0           # t0: face (kept across apply_move)
-    lhu     a0, 0(a7)
-    lhu     a1, 2(a7)
-    jal     ra, apply_move      # a0: next_p, a1: next_o
+1:  auipc   t3, %pcrel_hi(turns_table)
+    addi    t3, t3, %pcrel_lo(1b)
+    add     t3, t3, t0
+    lbu     t3, 0(t3)           # t3: turns = turns_table[move]
+    # slli t4, t1, 13 + slli t4, t4, 1
+    slli    t4, t1, 14         
+    # slli t5, t1, 10 + slli t3, t3, 1
+    add     t4, t4, s10         # t4: &perm_transition_flat[face << 13]
+    slli    t5, t1, 11
+    add     t5, t5, s11         # t5: &ori_transition_flat[face << 10]
+    addi    t0, t1, 0           # t0: face
+    lhu     a0, 0(a7)           # a0: next_p
+    lhu     a1, 2(a7)           # a1: next_o
+solve_turn_loop:
+    slli    t6, a0, 1
+    add     t6, t6, t4
+    lhu     a0, 0(t6)           # next_p = perm table[next_p]
+    slli    t6, a1, 1
+    add     t6, t6, t5
+    lhu     a1, 0(t6)           # next_o = ori table[next_o]
+    addi    t3, t3, -1
+    bne     t3, x0, solve_turn_loop
+
     addi    a6, a6, 1           # depth++
     lbu     t2, 4(a7)
     addi    t2, t2, 1           # t2: stack[depth].g + 1
