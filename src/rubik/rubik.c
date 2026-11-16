@@ -215,6 +215,11 @@ int solve(uint16_t p_rank, uint16_t o_rank, uint8_t *path)
             uint8_t remaining = bound - stack[depth].g;
 
             if (remaining == 5) {
+                if (get_heuristic(stack[depth].p_rank, stack[depth].o_rank) >
+                    5) {
+                    depth--;
+                    continue;
+                }
                 uint32_t node_rank = ((uint32_t) stack[depth].p_rank << 10) |
                                      stack[depth].o_rank;
                 if (binary_search(node_rank, in_step_5, 12224) != NOT_FOUND) {

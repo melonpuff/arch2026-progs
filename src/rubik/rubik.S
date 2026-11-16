@@ -301,6 +301,10 @@ solve_stack_loop:
     addi    t1, x0, 5
     bne     t0, t1, solve_not_remaining_5
     lhu     a0, 0(a7)
+    lhu     a1, 2(a7)
+    jal     ra, get_heuristic   # a0: h
+    bltu    t0, a0, solve_pop_5 # h > 5: not within 5 moves
+    lhu     a0, 0(a7)
     slli    a0, a0, 10
     lhu     t1, 2(a7)
     or      a0, a0, t1          # a0: node_rank
@@ -311,6 +315,7 @@ solve_stack_loop:
     jal     ra, binary_search
     addi    t1, x0, 255
     bne     a0, t1, solve_found
+solve_pop_5:
     addi    a6, a6, -1          # depth--
     beq     x0, x0, solve_stack_loop
 
