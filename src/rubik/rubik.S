@@ -620,3 +620,4 @@ write_out_loop_end:
     sb      x0, 0(t0)
     addi    a0, x0, 0
     jalr    x0, ra, 0           # return 0
+# ---------- write_out (end) ----------
