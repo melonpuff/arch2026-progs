@@ -32,6 +32,8 @@ rubik_solve_asm:
     sw      s7, 28(sp)
     sw      s8, 32(sp)
     sw      s9, 36(sp)
+    sw      s10, 112(sp)        # after stack[0..6] (sp+56..sp+111)
+    sw      s11, 116(sp)
     
     addi    s0, a0, 0           # s0: a0(state)
     addi    s1, a1, 0           # s1: a1(out)
@@ -65,6 +67,8 @@ rubik_solve_asm_out_is_valid:
     addi    a0, s0, 0
 rubik_solve_asm_return: 
     addi    ra, s3, 0
+    lw      s11, 116(sp)
+    lw      s10, 112(sp)
     lw      s9, 36(sp)
     lw      s8, 32(sp)
     lw      s7, 28(sp)
@@ -192,13 +196,10 @@ encode_o_loop:
 # get_heuristic(a0: p_rank, a1: o_rank) -> a0: h
 # leaf: uses a0-a1 and t1-t2 only
 get_heuristic: 
-1:  auipc   t1, %pcrel_hi(asm_perm_heuristic)
-    addi    t1, t1, %pcrel_lo(1b)
-    add     t1, t1, a0
+    # s0: &asm_perm_heuristic[0], s9: &asm_ori_heuristic[0] (set in solve)
+    add     t1, s0, a0
     lbu     t1, 0(t1)           # t1: p_h
-1:  auipc   t2, %pcrel_hi(asm_ori_heuristic)
-    addi    t2, t2, %pcrel_lo(1b)
-    add     t2, t2, a1
+    add     t2, s9, a1
     lbu     t2, 0(t2)           # t2: o_h
     bgeu    t2, t1, get_heuristic_p_smaller_eq
     addi    a0, t1, 0
@@ -214,6 +215,15 @@ solve:
     addi    s6, a1, 0           # s6: o_rank (initial)
     addi    s7, sp, 56          # s7: &stack[0]
     addi    s8, a2, 0           # s8: &path[0]
+    # table addresses, loaded once for get_heuristic and apply_move
+1:  auipc   s0, %pcrel_hi(asm_perm_heuristic)
+    addi    s0, s0, %pcrel_lo(1b)       # s0: &asm_perm_heuristic[0]
+1:  auipc   s9, %pcrel_hi(asm_ori_heuristic)
+    addi    s9, s9, %pcrel_lo(1b)       # s9: &asm_ori_heuristic[0]
+1:  auipc   s10, %pcrel_hi(asm_perm_transition_flat)
+    addi    s10, s10, %pcrel_lo(1b)     # s10: &asm_perm_transition_flat[0]
+1:  auipc   s11, %pcrel_hi(asm_ori_transition_flat)
+    addi    s11, s11, %pcrel_lo(1b)     # s11: &asm_ori_transition_flat[0]
 
     slli    a0, s5, 10
     or      a0, a0, s6          # a0: rank
@@ -443,24 +453,19 @@ apply_move:
     add     t3, t3, a2
     lbu     t3, 0(t3)           # t3: turns
     addi    t4, x0, 0           # t4: i
-    # a2: &perm_transition_flat[0]
-    # t1: &ori_transition_flat[0]
-
-1:  auipc   a2, %pcrel_hi(asm_perm_transition_flat)
-    addi    a2, a2, %pcrel_lo(1b)
-1:  auipc   t1, %pcrel_hi(asm_ori_transition_flat)
-    addi    t1, t1, %pcrel_lo(1b)
+    # s10: &asm_perm_transition_flat[0], s11: &asm_ori_transition_flat[0]
+    # (set in solve)
 apply_move_for_loop:
     slli    t5, t2, 13
     add     t5, t5, a0
     slli    t5, t5, 1
-    add     t5, t5, a2
+    add     t5, t5, s10
     lhu     a0, 0(t5)
 
     slli    t6, t2, 10
     add     t6, t6, a1
     slli    t6, t6, 1
-    add     t6, t6, t1
+    add     t6, t6, s11
     lhu     a1, 0(t6)
 
     addi    t4, t4, 1
